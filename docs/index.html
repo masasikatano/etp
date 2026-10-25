@@ -73,7 +73,7 @@
         <td class="cat-name">${item.name}</td>
         ${showCat ? `<td>${item.category}</td>` : ""}
         <td title="${mgr}">${mgrShort}</td>
-        <td class="num">${toNum(item.fields["純資産総額（2025年末・百万円）"]) != null ? toNum(item.fields["純資産総額（2025年末・百万円）"]).toLocaleString("ja-JP") : "—"}</td>
+        <td class="num">${toNum(item.fields["純資産総額（2025年末・百万円）"]) != null ? Math.floor(toNum(item.fields["純資産総額（2025年末・百万円）"])).toLocaleString("ja-JP") : "—"}</td>
         <td class="num">${feeCell(item.fields["総経費率（年率・税込）"])}</td>
         <td class="num ${cls}">${close}</td>
         <td class="num ${cls}">${chg.t}</td>
