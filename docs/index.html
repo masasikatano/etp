@@ -57,11 +57,11 @@
   <script src="common.js?v=20261025b"></script>
   <script>
     let DATA = null;
-    let activeCat = null;
-    let sortKey = "code";
-    let sortDir = 1;
+    let activeCat = "all";
+    let sortKey = "chg";
+    let sortDir = -1;
 
-    function row(item) {
+    function row(item, showCat) {
       const price = item.price || null;
       const chg = signed(price && price.change_pct);
       const close = price && price.close != null ? fmt(price.close) : "データなし";
@@ -71,6 +71,7 @@
       return `<tr data-code="${item.code}">
         <td class="num">${item.code}</td>
         <td class="cat-name">${item.name}</td>
+        ${showCat ? `<td>${item.category}</td>` : ""}
         <td title="${mgr}">${mgrShort}</td>
         <td class="num">${toNum(item.fields["純資産総額（2025年末・百万円）"]) != null ? toNum(item.fields["純資産総額（2025年末・百万円）"]).toLocaleString("ja-JP") : "—"}</td>
         <td class="num">${feeCell(item.fields["総経費率（年率・税込）"])}</td>
@@ -103,17 +104,17 @@
       return String(a).localeCompare(String(b), "ja");
     }
 
-    function table(items, sortKey, sortDir) {
+    function table(items, sortKey, sortDir, showCat) {
       const arrow = k => k === sortKey ? `<span class="arrow">${sortDir > 0 ? "▲" : "▼"}</span>` : "";
       const head = (key, label, cls = "") =>
         `<th class="sortable ${cls}" data-sort="${key}">${label}${arrow(key)}</th>`;
       return `<div class="wrap"><table>
         <thead><tr>
-          ${head("code", "コード", "num")}${head("name", "名称")}${head("manager", "管理会社")}
+          ${head("code", "コード", "num")}${head("name", "名称")}${showCat ? "<th>カテゴリ</th>" : ""}${head("manager", "管理会社")}
           ${head("asset", "純資産総額（百万円）", "num")}${head("fee", "総経費率", "num")}
           ${head("close", "終値（参考値）", "num")}${head("chg", "前日比％", "num")}${head("asof", "基準日")}
         </tr></thead>
-        <tbody>${items.map(row).join("")}</tbody>
+        <tbody>${items.map(i => row(i, showCat)).join("")}</tbody>
       </table></div>`;
     }
 
@@ -121,13 +122,20 @@
       const cats = DATA.categories || [];
       const items = DATA.items || [];
       const main = document.getElementById("main");
-      if (!activeCat || !cats.some(c => c.id === activeCat)) activeCat = cats[0] && cats[0].id;
-      const tabs = `<div class="tabs">${cats.map(c =>
+      if (activeCat !== "all" && !cats.some(c => c.id === activeCat)) activeCat = "all";
+      const allBtn = `<button class="tab ${activeCat === "all" ? "active" : ""}" data-cat="all">全て<span class="n">${items.length}</span></button>`;
+      const tabs = `<div class="tabs">${allBtn}${cats.map(c =>
         `<button class="tab ${c.id === activeCat ? "active" : ""}" data-cat="${c.id}">${c.title}<span class="n">${c.count}</span></button>`
       ).join("")}</div>`;
-      const shown = items.filter(i => i.category === activeCat)
-        .sort((a, b) => sortDir * compare(valueFor(a, sortKey), valueFor(b, sortKey)));
-      main.innerHTML = tabs + table(shown, sortKey, sortDir);
+      const shown = (activeCat === "all" ? items : items.filter(i => i.category === activeCat))
+        .sort((a, b) => {
+          const va = valueFor(a, sortKey), vb = valueFor(b, sortKey);
+          if (va == null && vb == null) return 0;
+          if (va == null) return 1;   // null（データなし）は昇順・降順どちらでも末尾
+          if (vb == null) return -1;
+          return sortDir * compare(va, vb);
+        });
+      main.innerHTML = tabs + table(shown, sortKey, sortDir, activeCat === "all");
       main.querySelectorAll(".tab").forEach(b =>
         b.addEventListener("click", () => { activeCat = b.dataset.cat; render(); }));
       main.querySelectorAll("th.sortable").forEach(h =>
