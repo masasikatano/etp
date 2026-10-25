@@ -61,6 +61,17 @@
     let sortKey = "chg";
     let sortDir = -1;
 
+    // ISO 形式（2026-10-25T02:46:27+09:00）を「2026年10月25日 午前2時46分」に整形する
+    function fmtJst(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return "—";
+      const p = n => String(n).padStart(2, "0");
+      const ampm = d.getHours() < 12 ? "午前" : "午後";
+      const h12 = d.getHours() % 12 === 0 ? 12 : d.getHours() % 12;
+      return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${ampm}${h12}時${p(d.getMinutes())}分`;
+    }
+
     function row(item, showCat) {
       const price = item.price || null;
       const chg = signed(price && price.change_pct);
@@ -157,7 +168,7 @@
       }
       DATA = await res.json();
       document.getElementById("meta").textContent =
-        `最終更新（JST）: ${DATA.generated_at || "—"}　銘柄数: ${DATA.count ?? "—"}　価格データ: ${DATA.with_price_count ?? "—"} 銘柄`;
+        `最終更新: ${fmtJst(DATA.generated_at)}　銘柄数: ${DATA.count ?? "—"}　価格データ: ${DATA.with_price_count ?? "—"} 銘柄`;
       const banner = document.getElementById("banner");
       if (DATA.reference_note) {
         banner.hidden = false;
