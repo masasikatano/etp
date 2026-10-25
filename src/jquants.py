@@ -59,7 +59,7 @@ def fetch_bars(today: date | None = None, days: int | None = None) -> dict[str, 
 
     days を指定した場合はウィンドウ末尾からその営業日数のみ取得する
     （フォールバックの終値・前日比には最後の2営業日だけあれば十分）。
-    戻り値: { "5桁コード": {"t": [date...], "v": [close...]}, ... }
+    戻り値: { "5桁コード": {"t": [date...], "v": [close...], "vol": [volume...]}, ... }
     API キー未設定・取得失敗時は空 dict（呼び出し側で「データなし」扱い）。
     """
     key = api_key()
@@ -89,12 +89,14 @@ def fetch_bars(today: date | None = None, days: int | None = None) -> dict[str, 
                     # レスポンスキーは PascalCase（Code/Date/C）だが念のため小文字も受ける
                     code = str(row.get("Code") or row.get("code") or "")
                     close = row.get("C") if row.get("C") is not None else row.get("close")
+                    vol = row.get("Volume") if row.get("Volume") is not None else row.get("volume")
                     d = str(row.get("Date") or row.get("date") or day.isoformat())
                     if not code or close is None:
                         continue
-                    bars = out.setdefault(code, {"t": [], "v": []})
+                    bars = out.setdefault(code, {"t": [], "v": [], "vol": []})
                     bars["t"].append(d)
                     bars["v"].append(float(close))
+                    bars["vol"].append(int(vol) if vol is not None else None)
                 nxt = data.get("pagination_key")
                 if not nxt:
                     break
@@ -107,6 +109,7 @@ def fetch_bars(today: date | None = None, days: int | None = None) -> dict[str, 
         order = sorted(range(len(bars["t"])), key=lambda i: bars["t"][i])
         bars["t"] = [bars["t"][i] for i in order]
         bars["v"] = [bars["v"][i] for i in order]
+        bars["vol"] = [bars["vol"][i] for i in order]
     log.info("J-Quants: %s 銘柄分のバーを取得", len(out))
     return out
 
@@ -115,7 +118,8 @@ def fetch_prices(codes: list[str] | None = None) -> dict[str, dict]:
     """ウィンドウ内の日次バーから終値・前日比を算出して返す（Yahoo 失敗時のフォールバック用）。
 
     ウィンドウの最後の2営業日の close で (P_n/P_{n-1}-1)*100 を算出する。
-    戻り値: { "4桁コード": {"close": float, "change_pct": float|None, "as_of": "YYYY-MM-DD"}, ... }
+    出来高は最終営業日の Volume を返す。
+    戻り値: { "4桁コード": {"close": float, "change_pct": float|None, "volume": int|None, "as_of": "YYYY-MM-DD"}, ... }
     API キー未設定・取得失敗時は空 dict（呼び出し側で「データなし」扱い）。
     """
     bars_by_code = fetch_bars(days=2)
@@ -133,6 +137,7 @@ def fetch_prices(codes: list[str] | None = None) -> dict[str, dict]:
         out.setdefault(code4, {
             "close": bars["v"][-1],
             "change_pct": change_pct,
+            "volume": bars.get("vol", [None])[-1],
             "as_of": bars["t"][-1],
         })
     log.info("J-Quants: %s 銘柄分の価格を算出", len(out))

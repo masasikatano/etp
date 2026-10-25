@@ -14,7 +14,6 @@ GitHub Pages の URL（リポジトリの Settings → Pages で有効化後）�
 ./run_local.sh          # http://127.0.0.1:8080/ で閲覧
 ./run_local.sh --no-serve    # データ更新だけ
 ./run_local.sh --serve-only  # 既存データを配信するだけ
-PORT=9000 ./run_local.sh
 ```
 
 ## データについて

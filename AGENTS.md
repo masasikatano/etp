@@ -1,6 +1,6 @@
 # 東証上場ETF一覧サイト
 
-JPX の ETF データベース xlsx を銘柄マスタとし、Yahoo Finance から価格（参考値）を追記して
+JPX の ETF データベース xlsx を銘柄マスタとし、Yahoo Finance から価格（終値・前日比・出来高の参考値）を追記して
 GitHub Pages で公開する静的サイトです。仕様は [spec.md](spec.md) です。構成は `dsbd` リポジトリがテンプレート。
 
 ## 動かし方
@@ -20,7 +20,7 @@ PORT=9000 ./run_local.sh
 ## データソース
 
 - **銘柄マスタ**: JPX の ETF データベース xlsx（[投資家向けページ](https://www.jpx.co.jp/equities/products/etfs/investors/index.html) から href を動的に抽出してダウンロード。失敗時はリポジトリ内の `nlsgeu000000vx9t.xlsx` をフォールバックとして使う）。1 行目タイトル、4 行目ヘッダ（B 列「コード」始まり、A 列は空白列）、5 行目〜が 454 銘柄。約 40 列をすべて保持する。
-- **価格（主）**: Yahoo Finance の chart API（`query1.finance.yahoo.com/v8/finance/chart/{code}.T?interval=1d&range=5d`）。終値・前日比は close 配列の最後の2点から `(P_n/P_{n-1}-1)*100` で自前計算する。取得失敗・除外銘柄（`src/yahoo.py` の `YAHOO_EXCLUDE` で管理）は行を残し「データなし」。
+- **価格（主）**: Yahoo Finance の chart API（`query1.finance.yahoo.com/v8/finance/chart/{code}.T?interval=1d&range=5d`）。終値・前日比は close 配列の最後の2点から `(P_n/P_{n-1}-1)*100` で自前計算する。出来高は `volume` 配列の最終ポイント（None なら直近の有効値）。取得失敗・除外銘柄（`src/yahoo.py` の `YAHOO_EXCLUDE` で管理）は行を残し「データなし」。
 - **価格（フォールバック）**: [J-Quants](https://jquants.com/) の日次バー。Yahoo で取れなかった銘柄だけ埋める。Free 版のため取得ウィンドウは「実行日から 12 週間前〜17 週間前」。ウィンドウの最後の2営業日の close で同様に終値・前日比を算出し、UI 上は Yahoo の値と混在して「参考値（YYYY-MM-DD時点）」と明記する。J-Quants の code は「4桁コード＋市場区分1桁」（例: 1301 → 13010）で返るため、先頭4桁で xlsx のコードと突合する。日次バーは latest.json に保持しない。
 
 API キーは `.env` の `JQUANTS_API_KEY`（git 対象外。JSON・ログに出さないこと）。未設定でもジョブは成功し、Yahoo で取れなかった銘柄の価格は「データなし」になる。Yahoo 側にキーは不要。

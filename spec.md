@@ -34,6 +34,7 @@
    - Yahoo Finance を主とし、取得失敗した銘柄は J-Quants でフォールバックする。それも失敗・未対象銘柄は行を残し「データなし」表示（dsbd 同方針）。
    - Yahoo は銘柄コードに `.T` を付与（例: 1306 → 1306.T）。銘柄ごとの除外が必要な場合は `src/yahoo.py` の `YAHOO_EXCLUDE` で管理する。
    - 終値・前日比はいずれのソースでも close の最後の2点から自前計算する（前日比% = (P_n/P_{n-1}-1)*100）。Yahoo の `meta.regularMarketChangePercent` は使わない。
+   - 出来高は終値と同じ基準日のものを使う（Yahoo は `indicators.quote.volume` の最終ポイント、J-Quants は最終営業日の `Volume`）。取得できなければ `volume: null` で表示は「—」。
    - 表示はサイトの免責表現として「参考値（YYYY-MM-DD時点）」と必ず明記する（Yahoo の最新終値も含めて）。
    - J-Quants の code は5桁（例: 86970）、xlsx は4桁（8697）→ 先頭4桁で突合。
    - J-Quants APIキーはリポジトリ secret（`JQUANTS_API_KEY`）か `.env`。ログ・JSON に出さない。未設定でもジョブは成功（その場合フォールバックは「データなし」）。

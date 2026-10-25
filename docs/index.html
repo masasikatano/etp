@@ -49,7 +49,7 @@
 <body>
   <header>
     <h1>東証上場ETF一覧</h1>
-    <p class="lede">JPX の ETF データベース（銘柄マスタ）をベースに、Yahoo Finance から終値・前日比を参考値として併記。カテゴリで絞り込めます。</p>
+    <p class="lede">JPX の ETF データベース（銘柄マスタ）をベースに、Yahoo Finance から終値・前日比・出来高を参考値として併記。カテゴリで絞り込めます。</p>
     <div class="meta" id="meta">読み込み中…（表示は JST）</div>
     <div class="banner" id="banner" hidden></div>
   </header>
@@ -68,6 +68,7 @@
       const cls = price && price.close != null ? (chg.c || "") : "miss";
       const mgr = item.fields["管理会社"] || "—";
       const mgrShort = mgr.length > 10 ? mgr.slice(0, 10) + "…" : mgr;
+      const vol = price && price.volume != null ? price.volume.toLocaleString("ja-JP") : "—";
       return `<tr data-code="${item.code}">
         <td class="num">${item.code}</td>
         <td class="cat-name">${item.name}</td>
@@ -77,6 +78,7 @@
         <td class="num">${feeCell(item.fields["総経費率（年率・税込）"])}</td>
         <td class="num ${cls}">${close}</td>
         <td class="num ${cls}">${chg.t}</td>
+        <td class="num">${vol}</td>
         <td>${(price && price.as_of) || "—"}</td>
       </tr>`;
     }
@@ -91,6 +93,7 @@
         case "fee": return toFee(item.fields["総経費率（年率・税込）"]);
         case "close": return price && price.close != null ? price.close : null;
         case "chg": return price && price.change_pct != null ? price.change_pct : null;
+        case "volume": return price && price.volume != null ? price.volume : null;
         case "asof": return (price && price.as_of) || "";
         default: return "";
       }
@@ -112,7 +115,7 @@
         <thead><tr>
           ${head("code", "コード", "num")}${head("name", "名称")}${showCat ? "<th>カテゴリ</th>" : ""}${head("manager", "管理会社")}
           ${head("asset", "純資産総額（百万円）", "num")}${head("fee", "総経費率", "num")}
-          ${head("close", "終値（参考値）", "num")}${head("chg", "前日比％", "num")}${head("asof", "基準日")}
+          ${head("close", "終値（参考値）", "num")}${head("chg", "前日比％", "num")}${head("volume", "出来高（参考値）", "num")}${head("asof", "基準日")}
         </tr></thead>
         <tbody>${items.map(i => row(i, showCat)).join("")}</tbody>
       </table></div>`;

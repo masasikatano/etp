@@ -6,6 +6,8 @@
 終値・前日比は close 配列の最後の2点から自前で算出する
 （(P_n/P_{n-1}-1)*100。spec.md の定義と一致させるため
 meta.regularMarketChangePercent は使わない）。
+出来高は indicators.quote の volume 配列から、close と同じ最終ポイントの値を採用する
+（最終点が None の場合は直近の有効値にフォールバック）。
 
 取得失敗した銘柄は戻り値に含めず、呼び出し側で「データなし」扱いとする。
 """
@@ -35,14 +37,18 @@ def symbol(code: str) -> str:
 
 
 def parse_chart(data: dict) -> dict | None:
-    """chart API レスポンスから終値・前日比・基準日を算出する。
+    """chart API レスポンスから終値・前日比・出来高・基準日を算出する。
 
     close 配列の最後の2点から (P_n/P_{n-1}-1)*100 を計算する。
+    出来高は close と同じ最終ポイントの volume を採用し、
+    最終点が None の場合は直近の有効値にフォールバックする。
     取得できない場合は None を返す。
     """
     try:
         result = data["chart"]["result"][0]
-        closes = result["indicators"]["quote"][0]["close"]
+        quote = result["indicators"]["quote"][0]
+        closes = quote["close"]
+        volumes = quote.get("volume")
         timestamps = result["timestamp"]
     except (KeyError, IndexError, TypeError):
         return None
@@ -55,9 +61,16 @@ def parse_chart(data: dict) -> dict | None:
         prev = points[-2][1]
         if prev:
             change_pct = round((last_close / prev - 1) * 100, 3)
+    volume = None
+    if volumes:
+        for v in reversed(volumes[:len(points)]):
+            if v is not None:
+                volume = int(v)
+                break
     return {
         "close": float(last_close),
         "change_pct": change_pct,
+        "volume": volume,
         "as_of": date.fromtimestamp(last_ts).isoformat(),
     }
 

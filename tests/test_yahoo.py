@@ -9,12 +9,12 @@ from src import yahoo
 TS = [int(datetime(2026, 10, d, tzinfo=timezone.utc).timestamp()) for d in (22, 23)]
 
 
-def _chart_body(closes):
+def _chart_body(closes, volumes=None):
     return {
         "chart": {
             "result": [{
                 "timestamp": TS[:len(closes)],
-                "indicators": {"quote": [{"close": closes}]},
+                "indicators": {"quote": [{"close": closes, "volume": volumes}]},
             }],
         },
     }
@@ -22,10 +22,20 @@ def _chart_body(closes):
 
 def test_parse_chart_calculates_change_pct():
     # close 配列の最後の2点から (P_n/P_{n-1}-1)*100 で自前計算する
-    parsed = yahoo.parse_chart(_chart_body([3630.0, 3650.0]))
+    parsed = yahoo.parse_chart(_chart_body([3630.0, 3650.0], [1000, 1200]))
     assert parsed["close"] == 3650.0
     assert abs(parsed["change_pct"] - round((3650.0 / 3630.0 - 1) * 100, 3)) < 1e-9
+    assert parsed["volume"] == 1200  # close と同じ最終ポイントの出来高
     assert parsed["as_of"] == "2026-10-23"
+
+
+def test_parse_chart_volume_fallback_and_missing():
+    # 最終点の volume が None の場合は直近の有効値にフォールバック
+    parsed = yahoo.parse_chart(_chart_body([3630.0, 3650.0], [1000, None]))
+    assert parsed["volume"] == 1000
+    # volume 配列自体がない場合は None
+    parsed = yahoo.parse_chart(_chart_body([3630.0, 3650.0]))
+    assert parsed["volume"] is None
 
 
 def test_parse_chart_single_point_no_change():
@@ -47,11 +57,11 @@ def test_symbol():
 def test_fetch_prices_skips_failures(mock_fetch):
     # 取得失敗した銘柄は戻り値に含めず「データなし」扱いにする
     mock_fetch.side_effect = [
-        {"close": 3650.0, "change_pct": 0.5, "as_of": "2026-10-23"},
+        {"close": 3650.0, "change_pct": 0.5, "volume": 1200, "as_of": "2026-10-23"},
         None,
     ]
     out = yahoo.fetch_prices(["1305", "9999"])
-    assert out == {"1305": {"close": 3650.0, "change_pct": 0.5, "as_of": "2026-10-23"}}
+    assert out == {"1305": {"close": 3650.0, "change_pct": 0.5, "volume": 1200, "as_of": "2026-10-23"}}
 
 
 @patch("src.yahoo._fetch_one")

@@ -24,22 +24,32 @@ def test_fetch_prices_uses_last_two_business_days(monkeypatch):
     """fetch_prices はウィンドウの最後の2営業日の close から終値・前日比を算出する。"""
     bars = {
         "13050": {"t": ["2026-07-28", "2026-07-29", "2026-07-30"],
-                  "v": [3600.0, 3650.0, 3630.0]},
-        "99990": {"t": ["2026-07-30"], "v": [100.0]},
+                  "v": [3600.0, 3650.0, 3630.0], "vol": [800, 1000, 1200]},
+        "99990": {"t": ["2026-07-30"], "v": [100.0], "vol": [50]},
     }
     monkeypatch.setattr("src.jquants.fetch_bars", lambda **kwargs: bars)
     prices = jquants.fetch_prices()
     etf = prices["1305"]  # J-Quants の5桁コードは先頭4桁で突合
     assert etf["close"] == 3630.0
+    assert etf["volume"] == 1200  # 最終営業日の出来高
     assert etf["as_of"] == "2026-07-30"
     assert abs(etf["change_pct"] - round((3630.0 / 3650.0 - 1) * 100, 3)) < 1e-9
     # 1点しかない銘柄は change_pct=None
     assert prices["9999"]["close"] == 100.0
+    assert prices["9999"]["volume"] == 50
     assert prices["9999"]["change_pct"] is None
 
 
+def test_fetch_prices_volume_none(monkeypatch):
+    """Volume が欠けている場合は volume=None で返す。"""
+    bars = {"13050": {"t": ["2026-07-30"], "v": [3630.0], "vol": [None]}}
+    monkeypatch.setattr("src.jquants.fetch_bars", lambda **kwargs: bars)
+    prices = jquants.fetch_prices()
+    assert prices["1305"]["volume"] is None
+
+
 def test_fetch_prices_filters_codes_and_no_key(monkeypatch):
-    bars = {"13050": {"t": ["2026-07-29", "2026-07-30"], "v": [3650.0, 3630.0]}}
+    bars = {"13050": {"t": ["2026-07-29", "2026-07-30"], "v": [3650.0, 3630.0], "vol": [900, 800]}}
     monkeypatch.setattr("src.jquants.fetch_bars", lambda **kwargs: bars)
     prices = jquants.fetch_prices(codes=["1305"])
     assert list(prices) == ["1305"]

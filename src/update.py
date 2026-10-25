@@ -44,7 +44,7 @@ def load_dotenv() -> None:
 
 
 def build_payload(records: list[dict], prices: dict[str, dict]) -> dict:
-    """prices: { "4桁コード": {"close", "change_pct", "as_of"} }。取得失敗銘柄はキーなし。"""
+    """prices: { "4桁コード": {"close", "change_pct", "volume", "as_of"} }。取得失敗銘柄はキーなし。"""
 
     items: list[dict] = []
     as_of_dates: list[str] = []
