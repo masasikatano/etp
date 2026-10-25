@@ -40,7 +40,10 @@
     .num { font-variant-numeric: tabular-nums; text-align: right; }
     .up { color: var(--green); } .down { color: var(--red); }
     .miss { color: var(--muted); }
-    .cat-name { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+    .cat-name { max-width: 480px; overflow: hidden; text-overflow: ellipsis; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--fg); }
+    th .arrow { margin-left: .3rem; opacity: .9; }
   </style>
 </head>
 <body>
@@ -55,16 +58,20 @@
   <script>
     let DATA = null;
     let activeCat = null;
+    let sortKey = "code";
+    let sortDir = 1;
 
     function row(item) {
       const price = item.price || null;
       const chg = signed(price && price.change_pct);
       const close = price && price.close != null ? fmt(price.close) : "データなし";
       const cls = price && price.close != null ? (chg.c || "") : "miss";
+      const mgr = item.fields["管理会社"] || "—";
+      const mgrShort = mgr.length > 10 ? mgr.slice(0, 10) + "…" : mgr;
       return `<tr data-code="${item.code}">
         <td class="num">${item.code}</td>
         <td class="cat-name">${item.name}</td>
-        <td>${item.fields["管理会社"] || "—"}</td>
+        <td title="${mgr}">${mgrShort}</td>
         <td class="num">${item.fields["純資産総額（2025年末・百万円）"] != null ? Number(item.fields["純資産総額（2025年末・百万円）"]).toLocaleString("ja-JP") : "—"}</td>
         <td class="num">${pctFmt(item.fields["総経費率（年率・税込）"])}</td>
         <td class="num ${cls}">${close}</td>
@@ -73,12 +80,38 @@
       </tr>`;
     }
 
-    function table(items) {
+    function valueFor(item, key) {
+      const price = item.price || null;
+      switch (key) {
+        case "code": return item.code;
+        case "name": return item.name;
+        case "manager": return (item.fields["管理会社"] || "") + "";
+        case "asset": return item.fields["純資産総額（2025年末・百万円）"] ?? null;
+        case "fee": return item.fields["総経費率（年率・税込）"] ?? null;
+        case "close": return price && price.close != null ? price.close : null;
+        case "chg": return price && price.change_pct != null ? price.change_pct : null;
+        case "asof": return (price && price.as_of) || "";
+        default: return "";
+      }
+    }
+
+    function compare(a, b) {
+      if (a == null && b == null) return 0;
+      if (a == null) return 1;
+      if (b == null) return -1;
+      if (typeof a === "number" && typeof b === "number") return a - b;
+      return String(a).localeCompare(String(b), "ja");
+    }
+
+    function table(items, sortKey, sortDir) {
+      const arrow = k => k === sortKey ? `<span class="arrow">${sortDir > 0 ? "▲" : "▼"}</span>` : "";
+      const head = (key, label, cls = "") =>
+        `<th class="sortable ${cls}" data-sort="${key}">${label}${arrow(key)}</th>`;
       return `<div class="wrap"><table>
         <thead><tr>
-          <th class="num">コード</th><th>名称</th><th>管理会社</th>
-          <th class="num">純資産総額（百万円）</th><th class="num">総経費率</th>
-          <th class="num">終値（参考値）</th><th class="num">前日比％</th><th>基準日</th>
+          ${head("code", "コード", "num")}${head("name", "名称")}${head("manager", "管理会社")}
+          ${head("asset", "純資産総額（百万円）", "num")}${head("fee", "総経費率", "num")}
+          ${head("close", "終値（参考値）", "num")}${head("chg", "前日比％", "num")}${head("asof", "基準日")}
         </tr></thead>
         <tbody>${items.map(row).join("")}</tbody>
       </table></div>`;
