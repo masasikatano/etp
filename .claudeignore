@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# 生成データ・バイナリ
+docs/data/latest.json.tmp
+*.log
+
+# 環境・シークレット
+.env
+
+# Git
+.git/

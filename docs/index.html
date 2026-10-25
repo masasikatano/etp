@@ -64,7 +64,7 @@
     function row(item, showCat) {
       const price = item.price || null;
       const chg = signed(price && price.change_pct);
-      const close = price && price.close != null ? fmt(price.close) : "データなし";
+      const close = price && price.close != null ? Math.floor(price.close).toLocaleString("ja-JP") : "データなし";
       const cls = price && price.close != null ? (chg.c || "") : "miss";
       const mgr = item.fields["管理会社"] || "—";
       const mgrShort = mgr.length > 10 ? mgr.slice(0, 10) + "…" : mgr;
