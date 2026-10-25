@@ -54,7 +54,7 @@
     <div class="banner" id="banner" hidden></div>
   </header>
   <main id="main"></main>
-  <script src="common.js"></script>
+  <script src="common.js?v=20261025b"></script>
   <script>
     let DATA = null;
     let activeCat = null;
@@ -72,8 +72,8 @@
         <td class="num">${item.code}</td>
         <td class="cat-name">${item.name}</td>
         <td title="${mgr}">${mgrShort}</td>
-        <td class="num">${item.fields["純資産総額（2025年末・百万円）"] != null ? Number(item.fields["純資産総額（2025年末・百万円）"]).toLocaleString("ja-JP") : "—"}</td>
-        <td class="num">${pctFmt(item.fields["総経費率（年率・税込）"])}</td>
+        <td class="num">${toNum(item.fields["純資産総額（2025年末・百万円）"]) != null ? toNum(item.fields["純資産総額（2025年末・百万円）"]).toLocaleString("ja-JP") : "—"}</td>
+        <td class="num">${feeCell(item.fields["総経費率（年率・税込）"])}</td>
         <td class="num ${cls}">${close}</td>
         <td class="num ${cls}">${chg.t}</td>
         <td>${(price && price.as_of) || "—"}</td>
@@ -86,8 +86,8 @@
         case "code": return item.code;
         case "name": return item.name;
         case "manager": return (item.fields["管理会社"] || "") + "";
-        case "asset": return item.fields["純資産総額（2025年末・百万円）"] ?? null;
-        case "fee": return item.fields["総経費率（年率・税込）"] ?? null;
+        case "asset": return toNum(item.fields["純資産総額（2025年末・百万円）"]);
+        case "fee": return toFee(item.fields["総経費率（年率・税込）"]);
         case "close": return price && price.close != null ? price.close : null;
         case "chg": return price && price.change_pct != null ? price.change_pct : null;
         case "asof": return (price && price.as_of) || "";
@@ -125,10 +125,17 @@
       const tabs = `<div class="tabs">${cats.map(c =>
         `<button class="tab ${c.id === activeCat ? "active" : ""}" data-cat="${c.id}">${c.title}<span class="n">${c.count}</span></button>`
       ).join("")}</div>`;
-      const shown = items.filter(i => i.category === activeCat);
-      main.innerHTML = tabs + table(shown);
+      const shown = items.filter(i => i.category === activeCat)
+        .sort((a, b) => sortDir * compare(valueFor(a, sortKey), valueFor(b, sortKey)));
+      main.innerHTML = tabs + table(shown, sortKey, sortDir);
       main.querySelectorAll(".tab").forEach(b =>
         b.addEventListener("click", () => { activeCat = b.dataset.cat; render(); }));
+      main.querySelectorAll("th.sortable").forEach(h =>
+        h.addEventListener("click", () => {
+          const key = h.dataset.sort;
+          if (key === sortKey) { sortDir *= -1; } else { sortKey = key; sortDir = 1; }
+          render();
+        }));
     }
 
     async function main() {

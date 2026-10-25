@@ -15,3 +15,28 @@ const pctFmt = (v) => {
   const n = Number(v);
   return (n * 100).toFixed(2) + "%";
 };
+
+// xlsx のセル値（数値、"99（注1）"、"0.26%"、"-" 等の文字列）を数値に正規化する。
+const toNum = (v) => {
+  if (v === null || v === undefined || Number.isNaN(v)) return null;
+  if (typeof v === "number") return v;
+  const m = String(v).replace(/（注[^）]*）/g, "").replace(/,/g, "").trim().match(/-?[\d.]+/);
+  return m ? parseFloat(m[0]) : null;
+};
+
+// 総経費率は浮動小数は小数表記（0.0026）、"0.26%" 表記の文字列は百分率なので小数に揃える。
+const toFee = (v) => {
+  if (v === null || v === undefined || Number.isNaN(v)) return null;
+  if (typeof v === "string" && v.includes("%")) {
+    const n = toNum(v);
+    return n === null ? null : n / 100;
+  }
+  return toNum(v);
+};
+
+// 総経費率セルの表示: "-"(xlsx の未公表プレースホルダー) は「未公表」、
+// 空白は「—」、それ以外は toFee/pctFmt で百分率表示。
+const feeCell = (v) => {
+  if (typeof v === "string" && v.trim() === "-") return "未公表";
+  return pctFmt(toFee(v));
+};
