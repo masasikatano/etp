@@ -73,12 +73,11 @@ def fetch_bars(today: date | None = None, days: int | None = None) -> dict[str, 
     try:
         # v2 daily は date または code の指定が必須のため、ウィンドウ内を営業日単位で取得
         targets: list[date] = []
-        day = frm
+        day = frm + timedelta(days=1)  # frm 当日は除外（to までの営業日）
         while day <= to:
+            if day.weekday() < 5:
+                targets.append(day)
             day += timedelta(days=1)
-            if day.weekday() >= 5:
-                continue
-            targets.append(day)
         if days is not None:
             targets = targets[-days:]
         for day in targets:
@@ -89,7 +88,7 @@ def fetch_bars(today: date | None = None, days: int | None = None) -> dict[str, 
                     # レスポンスキーは PascalCase（Code/Date/C）だが念のため小文字も受ける
                     code = str(row.get("Code") or row.get("code") or "")
                     close = row.get("C") if row.get("C") is not None else row.get("close")
-                    vol = row.get("Volume") if row.get("Volume") is not None else row.get("volume")
+                    vol = row.get("Vo") if row.get("Vo") is not None else row.get("Volume", row.get("volume"))
                     d = str(row.get("Date") or row.get("date") or day.isoformat())
                     if not code or close is None:
                         continue
