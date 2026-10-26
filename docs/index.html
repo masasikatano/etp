@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>東証上場ETF一覧</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <style>
     :root {
       --bg: #12151c; --bg2: #1a1f2b; --fg: #e8edf5; --muted: #8b95a8;
@@ -40,7 +44,8 @@
     .num { font-variant-numeric: tabular-nums; text-align: right; }
     .up { color: var(--green); } .down { color: var(--red); }
     .miss { color: var(--muted); }
-    .cat-name { max-width: 480px; overflow: hidden; text-overflow: ellipsis; }
+    .cat-name { max-width: 400px; overflow: hidden; text-overflow: ellipsis; }
+    .mgr { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
     th.sortable { cursor: pointer; user-select: none; }
     th.sortable:hover { color: var(--fg); }
     th .arrow { margin-left: .3rem; opacity: .9; }
@@ -84,13 +89,13 @@
         <td class="num">${item.code}</td>
         <td class="cat-name">${item.name}</td>
         ${showCat ? `<td>${item.category}</td>` : ""}
-        <td title="${mgr}">${mgrShort}</td>
+        <td class="mgr" title="${mgr}">${mgrShort}</td>
         <td class="num">${toNum(item.fields["純資産総額（2025年末・百万円）"]) != null ? Math.floor(toNum(item.fields["純資産総額（2025年末・百万円）"])).toLocaleString("ja-JP") : "—"}</td>
         <td class="num">${feeCell(item.fields["総経費率（年率・税込）"])}</td>
         <td class="num ${cls}">${close}</td>
         <td class="num ${cls}">${chg.t}</td>
         <td class="num">${vol}</td>
-        <td>${(price && price.as_of) || "—"}</td>
+        <td>${(price && price.as_of) ? price.as_of.slice(5) : "—"}</td>
       </tr>`;
     }
 
