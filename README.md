@@ -39,7 +39,7 @@ python -m src.update    # データ更新
 1. GitHub にリポジトリを push。
 2. Settings → Pages → **Deploy from a branch** → Branch: `main`、Folder: `/docs`。
 3. Settings → Secrets and variables → Actions に `JQUANTS_API_KEY` を登録。
-4. `.github/workflows/update.yml` が平日 21:30 JST と手動実行（`workflow_dispatch`）でデータを更新し、`[skip ci]` 付きで `main` に push します。API キー未設定でも Yahoo 経由でジョブ自体は成功します（J-Quants フォールバック分のみ「データなし」）。
+4. `.github/workflows/update.yml` が平日 19:12 JST と手動実行（`workflow_dispatch`）でデータを更新し、`[skip ci]` 付きで `main` に push します。API キー未設定でも Yahoo 経由でジョブ自体は成功します（J-Quants フォールバック分のみ「データなし」）。
 
 ## プロジェクト構造
 
