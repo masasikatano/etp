@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Potent Scan | 東証上場ETF一覧</title>
+  <link rel="icon" href="./favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+  <style>
+    :root {
+      --bg: #12151c; --bg2: #1a1f2b; --fg: #e8edf5; --muted: #8b95a8;
+      --line: #2a3244; --green: #3dcc8a; --red: #ef6b6b; --yellow: #e0b54a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg); color: var(--fg); line-height: 1.45;
+    }
+    header { padding: 1.4rem 1.2rem 1rem; border-bottom: 1px solid var(--line); background: var(--bg2); }
+    h1 { margin: 0 0 .4rem; font-size: 1.35rem; font-weight: 650; }
+    .lede { color: var(--muted); margin: 0; font-size: .95rem; }
+    .meta { margin-top: .7rem; font-size: .9rem; color: var(--muted); }
+    .banner {
+      margin-top: .7rem; padding: .55rem .75rem; border-radius: 6px;
+      background: #2a2430; color: #f0d9a8; font-size: .9rem;
+    }
+    nav { margin-top: .7rem; font-size: .9rem; }
+    nav a { color: #7db8dd; }
+    main { padding: 1rem 1.2rem 3rem; }
+    .empty { color: var(--muted); padding: 1rem 0; }
+    .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; min-width: 900px; }
+    th, td { padding: .42rem .5rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+    th { background: #222836; color: var(--muted); font-weight: 600; position: sticky; top: 0; }
+    tr:nth-child(even) td { background: #161b24; }
+    tbody tr:hover td { background: #1d2433; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+    .up { color: var(--green); } .down { color: var(--red); }
+    .miss { color: var(--muted); }
+    .cat-name { max-width: 400px; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Potent Scan</h1>
+    <p class="lede">前日比 ≧ +2.0%・出来高 ≧ 10,000口・RVol ≧ 2.0（RVol 算出不可の銘柄は他2条件で掲載）に合致し、当日（基準日が最新）の価格がある銘柄のみ表示します。</p>
+    <div class="meta" id="meta">読み込み中…（表示は JST）</div>
+    <div class="banner" id="banner" hidden></div>
+    <nav><a href="index.html">← 一覧テーブルに戻る</a></nav>
+  </header>
+  <main id="main"></main>
+  <script src="common.js?v=20261025b"></script>
+  <script>
+    // Potent Scan 条件（2026-11-15 確定・案E）。すべて「以上」。
+    const SCAN = { minChangePct: 2.0, minVolume: 10000, minRvol: 2.0 };
+    let DATA = null;
+
+    // スキャン対象は price.as_of が payload の reference_date と一致する銘柄に限る。
+    // J-Quants フォールバック銘柄（12〜17週間前の参考値）や前日以前の価格を
+    // その日のスキャン結果として出さないための意図的な仕様。
+    function isPotent(item) {
+      const p = item.price;
+      if (!p) return false;
+      if (p.as_of !== DATA.reference_date) return false;
+      if (!(p.change_pct != null && p.change_pct >= SCAN.minChangePct)) return false;
+      if (!(p.volume != null && p.volume >= SCAN.minVolume)) return false;
+      if (p.rvol != null) return p.rvol >= SCAN.minRvol;
+      return true;
+    }
+
+    function row(item) {
+      const price = item.price || null;
+      const chg = signed(price && price.change_pct);
+      const close = price && price.close != null ? Math.floor(price.close).toLocaleString("ja-JP") : "データなし";
+      const cls = price && price.close != null ? (chg.c || "") : "miss";
+      const vol = price && price.volume != null ? price.volume.toLocaleString("ja-JP") : "—";
+      const avg = price && price.avg_volume_20d != null ? price.avg_volume_20d.toLocaleString("ja-JP") : "—";
+      const rvol = price && price.rvol != null ? price.rvol.toFixed(2) : "—";
+      return `<tr data-code="${item.code}">
+        <td class="num">${item.code}</td>
+        <td class="cat-name">${item.name}</td>
+        <td>${item.category}</td>
+        <td class="num ${cls}">${close}</td>
+        <td class="num ${cls}">${chg.t}</td>
+        <td class="num">${vol}</td>
+        <td class="num">${avg}</td>
+        <td class="num">${rvol}</td>
+        <td>${(price && price.as_of) ? price.as_of.slice(5) : "—"}</td>
+      </tr>`;
+    }
+
+    function fmtJst(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (isNaN(d)) return "—";
+      const p = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}時${p(d.getMinutes())}分`;
+    }
+
+    function render() {
+      // 並び順: RVol 降順（rvol が null の行は末尾に集め、その中では前日比降順）
+      const shown = (DATA.items || []).filter(isPotent).sort((a, b) => {
+        const ra = a.price && a.price.rvol != null ? a.price.rvol : null;
+        const rb = b.price && b.price.rvol != null ? b.price.rvol : null;
+        if (ra == null && rb == null) return (b.price.change_pct || 0) - (a.price.change_pct || 0);
+        if (ra == null) return 1;
+        if (rb == null) return -1;
+        return rb - ra;
+      });
+      const main = document.getElementById("main");
+      if (!shown.length) {
+        main.innerHTML = `<p class="empty">条件に該当する銘柄はありません。</p>`;
+        return;
+      }
+      main.innerHTML = `<div class="wrap"><table>
+        <thead><tr>
+          <th class="num">コード</th><th>名称</th><th>カテゴリー</th>
+          <th class="num">終値（参考値）</th><th class="num">前日比％</th>
+          <th class="num">出来高（参考値）</th><th class="num">平均出来高(20日)</th>
+          <th class="num">RVol</th><th>基準日</th>
+        </tr></thead>
+        <tbody>${shown.map(i => row(i)).join("")}</tbody>
+      </table></div>`;
+    }
+
+    async function main() {
+      const res = await fetch("data/latest.json");
+      if (!res.ok) {
+        document.getElementById("meta").textContent = "latest.json がありません。先に ./run_local.sh --no-serve を実行してください。";
+        return;
+      }
+      DATA = await res.json();
+      document.getElementById("meta").textContent =
+        `最終更新: ${fmtJst(DATA.generated_at)}　銘柄数: ${DATA.count ?? "—"}　該当: ${(DATA.items || []).filter(isPotent).length} 銘柄`;
+      const banner = document.getElementById("banner");
+      if (DATA.reference_note) {
+        banner.hidden = false;
+        banner.textContent = `価格は ${DATA.reference_note} です（サイトの免責表現としての「参考値」。Yahoo Finance で取得できない銘柄は J-Quants の過去値、それも取得できない銘柄は「データなし」で行を残します）。`;
+      }
+      render();
+    }
+    main().catch(e => {
+      document.getElementById("meta").textContent = "読み込み失敗: " + e;
+    });
+  </script>
+</body>
+</html>

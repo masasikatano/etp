@@ -38,6 +38,9 @@ def test_fetch_prices_uses_last_two_business_days(monkeypatch):
     assert prices["9999"]["close"] == 100.0
     assert prices["9999"]["volume"] == 50
     assert prices["9999"]["change_pct"] is None
+    # フォールバックは平均出来高を取らない（スキーマ統一のため None を明示）
+    assert etf["avg_volume_20d"] is None
+    assert etf["rvol"] is None
 
 
 def test_fetch_prices_volume_none(monkeypatch):

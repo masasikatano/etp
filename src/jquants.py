@@ -118,7 +118,9 @@ def fetch_prices(codes: list[str] | None = None) -> dict[str, dict]:
 
     ウィンドウの最後の2営業日の close で (P_n/P_{n-1}-1)*100 を算出する。
     出来高は最終営業日の Volume を返す。
-    戻り値: { "4桁コード": {"close": float, "change_pct": float|None, "volume": int|None, "as_of": "YYYY-MM-DD"}, ... }
+    戻り値: { "4桁コード": {"close": float, "change_pct": float|None, "volume": int|None, "as_of": "YYYY-MM-DD",
+             "avg_volume_20d": None, "rvol": None}, ... }
+    フォールバックは平均出来高を取らないため新キーは常に None。
     API キー未設定・取得失敗時は空 dict（呼び出し側で「データなし」扱い）。
     """
     bars_by_code = fetch_bars(days=2)
@@ -138,6 +140,8 @@ def fetch_prices(codes: list[str] | None = None) -> dict[str, dict]:
             "change_pct": change_pct,
             "volume": bars.get("vol", [None])[-1],
             "as_of": bars["t"][-1],
+            "avg_volume_20d": None,
+            "rvol": None,
         })
     log.info("J-Quants: %s 銘柄分の価格を算出", len(out))
     return out

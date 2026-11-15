@@ -2,7 +2,7 @@
 
 [JPX（日本取引所グループ）のETFデータベース](https://www.jpx.co.jp/equities/products/etfs/investors/index.html) を銘柄マスタとし、[Yahoo Finance](https://finance.yahoo.com/) から価格（参考値）を追記して、GitHub Pages で公開する東証上場ETFの一覧サイトです。
 
-カテゴリ別の一覧（12カテゴリ・約450銘柄）を見られます。GitHub Actions が平日自動更新します。
+カテゴリ別の一覧（12カテゴリ・約450銘柄）を見られます。GitHub Actions が平日自動更新します。トップページから開ける Potent Scan（`scan.html`）では、前日比 ≧ +2.0%・出来高 ≧ 10,000口・RVol ≧ 2.0（RVol 算出不可の銘柄は他2条件で掲載）に合致した当日分の銘柄だけを表示します。スキャン結果も `latest.json` の再生成に連動して自動更新されます。
 
 ## 使い方（閲覧）
 
@@ -19,7 +19,7 @@ GitHub Pages の URL（リポジトリの Settings → Pages で有効化後）�
 ## データについて
 
 - **銘柄マスタ**: JPX の ETF データベース xlsx。更新時は投資家向けページからダウンロードリンクを動的に抽出。新規上場・上場廃止にも追従します。
-- **価格（主）**: Yahoo Finance の chart API（`{コード}.T`）。終値・前日比は close の最後の2点から自前計算します。
+- **価格（主）**: Yahoo Finance の chart API（`{コード}.T`）。終値・前日比は close の最後の2点から自前計算します。Potent Scan 用に、出来高の直前最大20営業日の平均（`avg_volume_20d`、当日を含まない）と `RVol = 出来高 / avg_volume_20d` も算出します。
 - **価格（フォールバック）**: [J-Quants](https://jquants.com/) の日次バー。Yahoo で取得できない銘柄に限り、Free 版の取得可能ウィンドウ「12週間前〜17週間前」の最後の2営業日で同様に算出して埋めます。フォールバック値は過去時点のものです。いずれの値もサイトの免責表現として **参考値（YYYY-MM-DD時点）** と表示されます。有料プランに変更すればフォールバックも最新値になります（`src/jquants.py` の `window()` を差し替え）。
 - 価格が取得できない銘柄は「データなし」と表示し、行は残ります。
 
@@ -51,6 +51,7 @@ src/
   update.py    # 統合 → docs/data/latest.json
 docs/
   index.html   # カテゴリタブ＋一覧テーブル
+  scan.html    # Potent Scan（条件合致銘柄のみ表示）
   common.js
   data/latest.json
 tests/         # pytest 単体テスト

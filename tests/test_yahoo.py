@@ -49,6 +49,72 @@ def test_parse_chart_no_data():
     assert yahoo.parse_chart(_chart_body([None, None])) is None
 
 
+def _chart_body_n(n, closes, volumes):
+    from datetime import timedelta
+    base = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    ts = [int((base + timedelta(days=i)).timestamp()) for i in range(n)]
+    return {
+        "chart": {
+            "result": [{
+                "timestamp": ts,
+                "indicators": {"quote": [{"close": closes, "volume": volumes}]},
+            }],
+        },
+    }
+
+
+def test_parse_chart_avg_volume_and_rvol():
+    # 正常系: 当日を含まない直前20営業日の平均、当日出来高/volume で rvol
+    closes = [3000.0] * 21 + [3100.0]
+    volumes = [10000] * 21 + [25000]  # 直前21点のうち当日を除く直前20点=10000
+    parsed = yahoo.parse_chart(_chart_body_n(22, closes, volumes))
+    assert parsed["avg_volume_20d"] == 10000
+    assert parsed["rvol"] == 2.5
+    assert parsed["volume"] == 25000
+
+
+def test_parse_chart_avg_volume_ignores_null_volumes():
+    # 出来高 null の日は除外して平均する（直前21点中19点有効 → その平均）
+    closes = [3000.0] * 22
+    volumes = [10000] * 19 + [None, None] + [25000]
+    parsed = yahoo.parse_chart(_chart_body_n(22, closes, volumes))
+    assert parsed["avg_volume_20d"] == 10000
+    assert parsed["rvol"] == 2.5
+
+
+def test_parse_chart_avg_volume_needs_10_days():
+    # 直前の有効な出来高が10営業日分未満なら avg_volume_20d=None（上場直後など）
+    closes = [3000.0] * 10
+    volumes = [None] * 8 + [10000] + [25000]
+    parsed = yahoo.parse_chart(_chart_body_n(10, closes, volumes))
+    assert parsed["avg_volume_20d"] is None
+    assert parsed["rvol"] is None
+
+
+def test_parse_chart_rvol_null_when_volume_null():
+    # 当日出来高が null の場合は直近の有効値にフォールバック（既存挙動）し、その値で rvol を算出
+    closes = [3000.0] * 22
+    volumes = [10000] * 21 + [None]
+    parsed = yahoo.parse_chart(_chart_body_n(22, closes, volumes))
+    assert parsed["avg_volume_20d"] == 10000
+    assert parsed["volume"] == 10000
+    assert parsed["rvol"] == 1.0
+    # 全点の出来高が null なら volume=None、rvol も null
+    parsed = yahoo.parse_chart(_chart_body_n(22, closes, [None] * 22))
+    assert parsed["avg_volume_20d"] is None
+    assert parsed["volume"] is None
+    assert parsed["rvol"] is None
+
+
+def test_parse_chart_excludes_current_day_from_average():
+    # 平均に当日を含めないこと: 直前20点=10000、当日=100000 でも平均は10000
+    closes = [3000.0] * 21 + [3100.0]
+    volumes = [10000] * 21 + [100000]
+    parsed = yahoo.parse_chart(_chart_body_n(22, closes, volumes))
+    assert parsed["avg_volume_20d"] == 10000
+    assert parsed["rvol"] == 10.0
+
+
 def test_symbol():
     assert yahoo.symbol("1306") == "1306.T"
 

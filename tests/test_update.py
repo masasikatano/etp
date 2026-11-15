@@ -11,10 +11,11 @@ RECORDS = [
      "fields": {"コード": 9999, "名称": "取得対象外銘柄"}},
 ]
 
-# 価格は「4桁コード → {close, change_pct, volume, as_of}」の最小形
+# 価格は「4桁コード → {close, change_pct, volume, as_of, avg_volume_20d, rvol}」の最小形
 PRICES = {
     "1305": {"close": 3630.0, "change_pct": round((3630.0 / 3650.0 - 1) * 100, 3),
-             "volume": 1200, "as_of": "2026-10-23"},
+             "volume": 1200, "as_of": "2026-10-23",
+             "avg_volume_20d": 800, "rvol": 1.5},
 }
 
 
@@ -27,6 +28,9 @@ def test_schema():
     assert etf["price"]["close"] == 3630.0
     assert etf["price"]["volume"] == 1200
     assert etf["price"]["as_of"] == "2026-10-23"
+    # 新キー（avg_volume_20d / rvol）はそのまま latest.json に流れる
+    assert etf["price"]["avg_volume_20d"] == 800
+    assert etf["price"]["rvol"] == 1.5
     assert abs(etf["price"]["change_pct"] - round((3630.0 / 3650.0 - 1) * 100, 3)) < 1e-9
     # 日次バーは latest.json に含めない
     assert "bars" not in etf
