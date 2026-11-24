@@ -99,6 +99,22 @@
       return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}時${p(d.getMinutes())}分`;
     }
 
+    // 次回更新: 平日（月〜金）17:00 JST の cron。祝日は考慮しない簡易表示。
+    function nextUpdate() {
+      const nowJst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+      const d = new Date(nowJst);
+      if (d.getDay() >= 1 && d.getDay() <= 5 && (d.getHours() < 17 || (d.getHours() === 17 && d.getMinutes() === 0))) {
+        d.setHours(17, 0, 0, 0);
+      } else {
+        d.setDate(d.getDate() + 1);
+        d.setHours(17, 0, 0, 0);
+        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+      }
+      const p = n => String(n).padStart(2, "0");
+      const wd = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+      return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${wd}）17時00分`;
+    }
+
     function render() {
       // 並び順: RVol 降順（rvol が null の行は末尾に集め、その中では前日比降順）
       const shown = (DATA.items || []).filter(isPotent).sort((a, b) => {
@@ -133,7 +149,7 @@
       }
       DATA = await res.json();
       document.getElementById("meta").textContent =
-        `最終更新: ${fmtJst(DATA.generated_at)}　銘柄数: ${DATA.count ?? "—"}　該当: ${(DATA.items || []).filter(isPotent).length} 銘柄`;
+        `最終更新: ${fmtJst(DATA.generated_at)}　次回更新: ${nextUpdate()}（平日17時JST・祝日除く）　銘柄数: ${DATA.count ?? "—"}　該当: ${(DATA.items || []).filter(isPotent).length} 銘柄`;
       const banner = document.getElementById("banner");
       if (DATA.reference_note) {
         banner.hidden = false;
